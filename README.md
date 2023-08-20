@@ -1,6 +1,6 @@
 pgsqlite
 =======
-Load SQLite3 databases into PostgresSQL.
+Load SQLite3 databases into PostgreSQL.
 
 Usage:
 ```
@@ -50,7 +50,7 @@ How This Works
 For more details, read: https://innerjoin.bit.io/introducing-pgsqlite-a-pure-python-module-to-import-sqlite-databases-into-postgres-bf3940cfa19f
 
 
-SQLite is far more forgiving a database then Postgree. Look at this `CREATE TABLE`:
+SQLite is far more forgiving a database then Postgres. Look at this `CREATE TABLE`:
 
 ```
 CREATE TABLE Customer_Ownership(
