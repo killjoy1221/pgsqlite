@@ -5,7 +5,7 @@ rm -rf dist/*
 rm -rf build/*
 rm -rf pgsqlite.egg-info
 set -e
-pip install build bumpversion twine
+pip install build bump-my-version twine
 pyproject-build
 python -m twine check dist/*
 python -m twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
