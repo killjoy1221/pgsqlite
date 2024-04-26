@@ -146,12 +146,12 @@ class PGSqlite(object):
         return await asyncio.gather(*(sem_task(coro) for coro in coros))
 
     def boolean_transformer(self, val: Any, nullable: bool) -> Union[bool, None]:
-        if nullable and not val:
+        if nullable and val is None:
             return None
-        if not nullable and not val:
+        if not nullable and val is None:
             raise Exception("Value is None but column is not nullable")
 
-        if val == 1 or val.lower() == "true":
+        if val == 1 or str(val).lower() == "true":
             return "TRUE"
         return "FALSE"
 
@@ -213,6 +213,10 @@ class PGSqlite(object):
             col_sql_str = col.parsed_column.sql(dialect="postgres")
             if "SERIAL" in col_sql_str:
                 col_sql_str = col_sql_str.replace("INT", "")
+
+            if "INT NOT NULL" in col_sql_str and col.source_name in table.src_table.pks:
+                col_sql_str = col_sql_str.replace("INT", "SERIAL")
+
             if "PRIMARY KEY SERIAL" in col_sql_str:
                 col_sql_str = col_sql_str.replace("PRIMARY KEY SERIAL", "SERIAL PRIMARY KEY")
             cols[col.source_name] = SQL(col_sql_str)
@@ -393,6 +397,12 @@ class PGSqlite(object):
         sl_conn = sqlite3.connect(self.sqlite_filename)
         sl_cur = sl_conn.cursor()
         logger.info(f"Loading data into {table}", table=table.transpiled_name)
+
+        pk_col_name = next((col.name for col in table.src_table.columns if col.is_pk and col.notnull and col.type == "INTEGER"), None)
+        last_index = None
+        if pk_col_name:
+            last_index, = sl_cur.execute(f'SELECT MAX("{pk_col_name}") FROM "{table.source_name}"').fetchone()
+
         # Given the table name came from the SQLITE database, and we're using it
         # to read from the sqlite database, we are okay with the literal substitution here
         sl_cur.execute(f'SELECT * FROM "{table.source_name}"')
@@ -423,6 +433,9 @@ class PGSqlite(object):
 
                     self.summary["tables"]["data"][table.source_name]["status"] = f"LOADED {rows_copied}"
                 logger.info(f"Finished loading {rows_copied} rows of data into {table.transpiled_name}")
+                if pk_col_name and last_index:
+                    logger.info(f"Updating sequence data for {table.transpiled_name}.{pk_col_name}")
+                    await pg_cur.execute(f'ALTER SEQUENCE "{table.transpiled_name}_{pk_col_name}_seq" RESTART WITH {last_index + 1}')
 
         sl_conn.close()
 
@@ -517,7 +530,7 @@ class PGSqlite(object):
                 # todo: add checks, views, triggers.
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-f",
@@ -542,32 +555,27 @@ if __name__ == "__main__":
     parser.add_argument(
         "-d",
         "--debug",
-        type=bool,
-        default=False,
+        action='store_true',
         help="Set log level to DEBUG",
     )
     parser.add_argument(
         "--show_sample_data",
-        type=bool,
-        default=False,
+        action='store_true',
         help="After import, show up to 10 rows of the imported data in each table.",
     )
     parser.add_argument(
         "--drop_tables",
-        type=bool,
-        default=False,
+        action='store_true',
         help="Prior to import, drop tables in the target database that have the same name as tables in the source database",
     )
     parser.add_argument(
         "--drop_everything",
-        type=bool,
-        default=False,
+        action='store_true',
         help="Prior to import, drop everything (tables, views, triggers, etc, etc) in the target database before the import",
     )
     parser.add_argument(
         "--drop_tables_after_import",
-        type=bool,
-        default=False,
+        action='store_true',
         help="Drop all tables in the target database after import; useful for testing",
     )
     args = parser.parse_args()
@@ -587,3 +595,6 @@ if __name__ == "__main__":
 
     if args.drop_tables_after_import:
         loader._drop_tables()
+
+if __name__ == "__main__":
+    main()
