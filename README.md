@@ -5,40 +5,49 @@ Load SQLite3 databases into PostgreSQL.
 Install with pipx
 
 ```sh
-pipx install pgsqlite
+pipx install git+https://github.com/killjoy1221/pgsqlite
 ```
 
 Usage:
 ```
-usage: pgsqlite.py [-h] -f SQLITE_FILENAME -p POSTGRES_CONNECT_URL [-d DEBUG] [--drop_tables DROP_TABLES] [--drop_everything DROP_EVERYTHING] [--drop_tables_after_import DROP_TABLES_AFTER_IMPORT]
+usage: pgsqlite [-h] -f SQLITE_FILENAME -p POSTGRES_CONNECT_URL
+                [--max_import_concurrency MAX_IMPORT_CONCURRENCY] [-d]
+                [--show_sample_data] [--drop_tables] [--drop_everything]
+                [--drop_tables_after_import]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -f SQLITE_FILENAME, --sqlite_filename SQLITE_FILENAME
                         sqlite database to import
   -p POSTGRES_CONNECT_URL, --postgres_connect_url POSTGRES_CONNECT_URL
                         Postgres URL for the database to import into
-  -d DEBUG, --debug DEBUG
-                        Set log level to DEBUG
-  --drop_tables DROP_TABLES
-                        Prior to import, drop tables in the target database that have the same name as tables in the source database
-  --drop_everything DROP_EVERYTHING
-                        Prior to import, drop everything (tables, views, triggers, etc, etc) in the target database before the import
-  --drop_tables_after_import DROP_TABLES_AFTER_IMPORT
-                        Drop all tables in the target database after import; useful for testing
-```
+  --max_import_concurrency MAX_IMPORT_CONCURRENCY
+                        Number of concurrent data import coroutines to run
+  -d, --debug           Set log level to DEBUG
+  --show_sample_data    After import, show up to 10 rows of the imported data
+                        in each table.
+  --drop_tables         Prior to import, drop tables in the target database
+                        that have the same name as tables in the source
+                        database
+  --drop_everything     Prior to import, drop everything (tables, views,
+                        triggers, etc, etc) in the target database before the
+                        import
+  --drop_tables_after_import
+                        Drop all tables in the target database after import;
+                        useful for testing
 
+```
 
 Examples:
 
 Import into the bit.io database `adam/AMEND`, with DEBUG-level logging.
 ```
-python pgsqlite.py  -f ../example_dbs/Chinook_Sqlite.sqlite -p postgresql://adam:<password>@db.bit.io/adam/AMEND --debug true
+pgsqlite -f ../example_dbs/Chinook_Sqlite.sqlite -p postgresql://adam:<password>@db.bit.io/adam/AMEND --debug
 ```
 
 Import into the bit.io database `adam/AMEND`, dropping all tables in the target database that match tables in the source database: 
 ```
-python pgsqlite.py  -f ../example_dbs/Chinook_Sqlite.sqlite -p postgresql://adam:<password>@db.bit.io/adam/AMEND --drop_tables true
+pgsqlite -f ../example_dbs/Chinook_Sqlite.sqlite -p postgresql://adam:<password>@db.bit.io/adam/AMEND --drop_tables
 ```
 
 Most of the drop options are used for testing - be aware they are destructive operations!
